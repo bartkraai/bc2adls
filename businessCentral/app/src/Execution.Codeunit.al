@@ -18,17 +18,18 @@ codeunit 82569 "ADLSE Execution"
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Field", 'r')]
     internal procedure StartExport()
     var
-        ADLSETable: Record "ADLSE Table";
+        AdlseTable: Record "ADLSE Table";
     begin
-        StartExport(ADLSETable);
+        StartExport(AdlseTable);
     end;
 
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Table", 'r')]
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Field", 'r')]
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE setup companies", 'r')]
     internal procedure StartExport(var AdlseTable: Record "ADLSE Table")
     var
+        ADLSESetupCompanies: Record "ADLSE Setup Companies";
         ADLSESetupRec: Record "ADLSE Setup";
-        ADLSEField: Record "ADLSE Field";
         ADLSECurrentSession: Record "ADLSE Current Session";
         ADLSESetup: Codeunit "ADLSE Setup";
         ADLSECommunication: Codeunit "ADLSE Communication";
@@ -48,16 +49,20 @@ codeunit 82569 "ADLSE Execution"
 
         if EmitTelemetry then
             Log('ADLSE-022', 'Starting export for all tables', Verbosity::Normal);
-        ADLSETable.SetRange(Enabled, true);
-        if ADLSETable.FindSet(false) then
-            repeat
-                Counter += 1;
-                ADLSEField.SetRange("Table ID", ADLSETable."Table ID");
-                ADLSEField.SetRange(Enabled, true);
-                if not ADLSEField.IsEmpty() then
-                    if ADLSESessionManager.StartExport(ADLSETable."Table ID", EmitTelemetry) then
-                        Started += 1;
-            until ADLSETable.Next() = 0;
+        ADLSESetupCompanies.SetRange(Enabled, true);
+        AdlseTable.SetRange(Enabled, true);
+        if ADLSESetupCompanies.FindSet() then
+            repeat                
+                if AdlseTable.FindSet(false) then
+                    repeat
+                        Counter += 1;
+                        AdlseTable.SetRange("Table ID", AdlseTable."Table ID");
+                        AdlseTable.SetRange(Enabled, true);
+                        if not AdlseTable.IsEmpty() then
+                            if ADLSESessionManager.StartExport(ADLSESetupCompanies.CompanyName, AdlseTable."Table ID", EmitTelemetry) then
+                                Started += 1;
+                    until AdlseTable.Next() = 0;
+            until ADLSESetupCompanies.Next() = 0;
 
         Message(ExportStartedTxt, Started, Counter);
         if EmitTelemetry then
@@ -90,7 +95,7 @@ codeunit 82569 "ADLSE Execution"
     internal procedure SchemaExport()
     var
         ADLSESetup: Record "ADLSE Setup";
-        ADLSETable: Record "ADLSE Table";
+        AdlseTable: Record "ADLSE Table";
         ADLSECurrentSession: Record "ADLSE Current Session";
         AllObjWithCaption: Record AllObjWithCaption;
         ADLSEExecute: Codeunit "ADLSE Execute";
@@ -101,22 +106,22 @@ codeunit 82569 "ADLSE Execution"
         // ensure that no current export sessions running
         ADLSECurrentSession.CheckForNoActiveSessions();
 
-        ADLSETable.Reset();
-        ADLSETable.SetRange(Enabled, true);
-        if ADLSETable.FindSet(false) then
+        AdlseTable.Reset();
+        AdlseTable.SetRange(Enabled, true);
+        if AdlseTable.FindSet(false) then
             if GuiAllowed() then
                 ProgressWindowDialog.Open(Progress1Msg);
         repeat
             if GuiAllowed() then begin
                 AllObjWithCaption.SetRange("Object Type", AllObjWithCaption."Object Type"::Table);
-                AllObjWithCaption.SetRange("Object ID", ADLSETable."Table ID");
+                AllObjWithCaption.SetRange("Object ID", AdlseTable."Table ID");
                 if AllObjWithCaption.FindFirst() then
                     if GuiAllowed() then
                         ProgressWindowDialog.Update(1, AllObjWithCaption."Object Caption");
             end;
 
-            ADLSEExecute.ExportSchema(ADLSETable."Table ID");
-        until ADLSETable.Next() = 0;
+            ADLSEExecute.ExportSchema(AdlseTable."Table ID");
+        until AdlseTable.Next() = 0;
 
         if GuiAllowed() then
             ProgressWindowDialog.Close();
@@ -190,13 +195,13 @@ codeunit 82569 "ADLSE Execution"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnAfterGetDatabaseTableTriggerSetup, '', true, true)]
     local procedure GetDatabaseTableTriggerSetup(TableId: Integer; var OnDatabaseInsert: Boolean; var OnDatabaseModify: Boolean; var OnDatabaseDelete: Boolean; var OnDatabaseRename: Boolean)
     var
-        ADLSETableLastTimestamp: Record "ADLSE Table Last Timestamp";
+        AdlseTableLastTimestamp: Record "ADLSE Table Last Timestamp";
     begin
         if CompanyName() = '' then
             exit;
 
         // track deletes only if at least one export has been made for that table
-        if ADLSETableLastTimestamp.ExistsUpdatedLastTimestamp(TableId) then
+        if AdlseTableLastTimestamp.ExistsUpdatedLastTimestamp(TableId) then
             OnDatabaseDelete := true;
     end;
 
@@ -207,7 +212,7 @@ codeunit 82569 "ADLSE Execution"
     [EventSubscriber(ObjectType::Codeunit, Codeunit::GlobalTriggerManagement, OnAfterOnDatabaseDelete, '', true, true)]
     local procedure OnAfterOnDatabaseDelete(RecRef: RecordRef)
     var
-        ADLSETableLastTimestamp: Record "ADLSE Table Last Timestamp";
+        AdlseTableLastTimestamp: Record "ADLSE Table Last Timestamp";
         ADLSEDeletedRecord: Record "ADLSE Deleted Record";
         DeletedTablesNottoSync: Record "Deleted Tables Not to Sync";
     begin
@@ -218,7 +223,7 @@ codeunit 82569 "ADLSE Execution"
             exit;
 
         // check if table is to be tracked.
-        if not ADLSETableLastTimestamp.ExistsUpdatedLastTimestamp(RecRef.Number) then
+        if not AdlseTableLastTimestamp.ExistsUpdatedLastTimestamp(RecRef.Number) then
             exit;
 
         ADLSEDeletedRecord.TrackDeletedRecord(RecRef);

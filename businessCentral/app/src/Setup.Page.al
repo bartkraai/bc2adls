@@ -132,6 +132,10 @@ page 82560 "ADLSE Setup"
                     }
                 }
             }
+            part(Companies; "ADLSE Setup Companies")
+            {
+                UpdatePropagation = Both;
+            }
             part(Tables; "ADLSE Setup Tables")
             {
                 UpdatePropagation = Both;
