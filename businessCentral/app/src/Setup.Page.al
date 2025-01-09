@@ -163,6 +163,22 @@ page 82560 "ADLSE Setup"
                     CurrPage.Update();
                 end;
             }
+              action(ExportAllCompanies)
+            {
+                ApplicationArea = All;
+                Caption = 'Export all companies';
+                ToolTip = 'Starts the export process by spawning different sessions for each table. The action is disabled in case there are export processes currently running, also in other companies.';
+                Image = Start;
+                Enabled = not ExportInProgress;
+
+                trigger OnAction()
+                var
+                    ADLSEExecution: Codeunit "ADLSE Execution";
+                begin
+                    ADLSEExecution.StartExportAllCompanies();
+                    CurrPage.Update();
+                end;
+            }
 
             action(StopExport)
             {
@@ -323,6 +339,7 @@ page 82560 "ADLSE Setup"
                 {
                     ShowAs = SplitButton;
                     actionref(ExportNow_Promoted; ExportNow) { }
+                    actionref(exportallcompanies_Promoted; exportallcompanies) { }
                     actionref(StopExport_Promoted; StopExport) { }
                     actionref(SchemaExport_Promoted; SchemaExport) { }
                     actionref(Schedule_Promoted; Schedule) { }

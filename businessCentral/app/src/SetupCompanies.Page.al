@@ -4,7 +4,10 @@ page 82578 "ADLSE Setup Companies"
     ApplicationArea = All;
     UsageCategory = Administration;
     SourceTable = "ADLSE Setup Companies";
-    Caption = 'ADLSE Setup Companies';
+    Caption = 'Companies';
+    DeleteAllowed = false;
+    InsertAllowed = false;
+
     
     layout
     {
@@ -12,38 +15,24 @@ page 82578 "ADLSE Setup Companies"
         {
             repeater(GroupName)
             {
+                field(Enabled;Rec.Enabled)
+                {
+                    Editable = true;
+                }
                 field(CompanyName;Rec.CompanyName)
                 {
                     Caption = 'Company';
                     Editable = true;
                     ToolTip = 'Enter the name of the company.';
                 }
-                field("Sequence No.";Rec."Sequence No.")
-                {
-                    Caption = 'Sequence No.';
-                    Editable = true;
-                    ToolTip = 'Enter the sequence number.';
-                }
                 field("Date last started";Rec."Date last started")
                 {
                     Editable = false;
-                    ToolTip = 'last started.';
                 }
-                field("Date last ended";Rec."Date last ended")
+                
+                field("Last message";Rec."Last message")
                 {
                     Editable = false;
-                    ToolTip = 'date last ended.';
-                }
-                field("last result";Rec."Last result")
-                {
-                    Editable = false;
-                    ToolTip = 'last result.';
-                }
-                field(Enabled;Rec.Enabled)
-                {
-                    Caption = 'enabled';
-                    Editable = true;
-                    ToolTip = 'Enter the enabled.';
                 }
             }
         }
@@ -62,6 +51,17 @@ page 82578 "ADLSE Setup Companies"
                 trigger OnAction()
                 begin
                     Rec."Refresh companies"();                    
+                end;
+            }
+            action("Update Status")
+            {
+                Caption = 'Update Status';
+                ToolTip = 'Update the status of the Export.';
+                Image = Refresh;
+                
+                trigger OnAction()
+                begin
+                    Rec.GetSessionInfo();                    
                 end;
             }
         }

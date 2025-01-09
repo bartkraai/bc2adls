@@ -7,10 +7,11 @@ table 82571 "ADLSE Setup Companies"
     
     fields
     {
-        field(10;CompanyName; Code[20])
+        field(10;CompanyName; Text[30])
         {
             Caption = 'Company';
             NotBlank = true;
+            TableRelation = Company.Name;
         }
         field(20;"Sequence No.";Integer)
         {
@@ -24,13 +25,21 @@ table 82571 "ADLSE Setup Companies"
         {
             Caption = 'Date last ended';
         }
-        field(50;"Last result";Text[250])
+        field(50;"Last message";Text[1024])
         {
             Caption = 'last result';
         }
         field(60;Enabled;Boolean)
         {
             Caption = 'enabled';
+        }
+        field(70;LastSessionId;Integer)
+        {
+            Caption = 'Last run session id';
+        }
+        field(80;ExportRunning;Boolean)
+        {
+            Caption = 'Export running';
         }
     }
     
@@ -69,6 +78,13 @@ table 82571 "ADLSE Setup Companies"
     procedure "Refresh companies"()
     begin
         //TODO: Implement this method, build up the list of companies.
+    end;
+
+    procedure GetSessionInfo()
+    var
+    begin
+        Rec.ExportRunning := Session.IsSessionActive(Rec.LastSessionId);
+        Rec.Modify(false);
     end;
     
 }

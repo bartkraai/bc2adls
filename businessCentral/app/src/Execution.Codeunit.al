@@ -10,6 +10,7 @@ codeunit 82569 "ADLSE Execution"
     var
         EmitTelemetry: Boolean;
         ExportStartedTxt: Label 'Data export started for %1 out of %2 tables. Please refresh this page to see the latest export state for the tables. Only those tables that either have had changes since the last export or failed to export last time have been included. The tables for which the exports could not be started have been queued up for later.', Comment = '%1 = number of tables to start the export for. %2 = total number of tables enabled for export.';
+        ExportStartedAllCompaniesTxt: Label 'Data export started for %1 companies. Please refresh this page to see the latest export state for the tables. Only those tables that either have had changes since the last export or failed to export last time have been included. The tables for which the exports could not be started have been queued up for later.';
         SuccessfulStopMsg: Label 'The export process was stopped successfully.';
         ClearSchemaExportedOnMsg: Label 'The schema export date has been cleared.';
 
@@ -25,11 +26,62 @@ codeunit 82569 "ADLSE Execution"
 
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Table", 'r')]
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Field", 'r')]
-    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE setup companies", 'r')]
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE setup companies", 'rm')]
+    internal procedure StartExportAllCompanies()
+    var
+        ADLSESetupCompanies: Record "ADLSE Setup Companies";
+        ADLSESetupRec: Record "ADLSE Setup";
+        AdlseTable: Record "ADLSE Table";
+        ADLSEField: Record "ADLSE Field";
+        ADLSECurrentSession: Record "ADLSE Current Session";
+        ADLSESetup: Codeunit "ADLSE Setup";
+        ADLSECommunication: Codeunit "ADLSE Communication";
+        ADLSESessionManager: Codeunit "ADLSE Session Manager";
+        ADLSEExternalEvents: Codeunit "ADLSE External Events";
+        Counter: Integer;
+        Started: Integer;
+        NewSessionID: Integer;
+    begin
+        ADLSESetup.CheckSetup(ADLSESetupRec);
+        EmitTelemetry := ADLSESetupRec."Emit telemetry";
+        ADLSECurrentSession.CleanupSessions();
+        if ADLSESetupRec.GetStorageType() = ADLSESetupRec."Storage Type"::"Azure Data Lake" then //Because Fabric doesn't have do create a container
+            ADLSECommunication.SetupBlobStorage();
+        ADLSESessionManager.Init();
+
+        ADLSEExternalEvents.OnExport(ADLSESetupRec);
+
+        if EmitTelemetry then
+            Log('ADLSE-022', 'Starting export for all tables', Verbosity::Normal);
+        ADLSESetupCompanies.SetRange(Enabled, true);
+        if ADLSESetupCompanies.FindSet() then begin
+            repeat
+                Counter += 1;
+
+                Session.StartSession(NewSessionID, Codeunit::"ADLSE Execution", ADLSESetupCompanies.CompanyName);
+
+                ADLSESetupCompanies."Date last started" := CurrentDateTime();
+                ADLSESetupCompanies.LastSessionId := NewSessionID;
+                ADLSESetupCompanies.GetSessionInfo();
+                ADLSESetupCompanies.Modify(false);
+            until ADLSESetupCompanies.Next() = 0;
+
+            Message(ExportStartedAllCompaniesTxt, Counter);
+            if EmitTelemetry then
+                Log('ADLSE-001', StrSubstNo(ExportStartedAllCompaniesTxt, Counter), Verbosity::Normal);
+
+            ADLSEExternalEvents.OnAllExportIsFinished(ADLSESetupRec);
+        end;
+    end;
+
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Table", 'r')]
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Field", 'r')]
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE setup companies", 'rm')]
     internal procedure StartExport(var AdlseTable: Record "ADLSE Table")
     var
         ADLSESetupCompanies: Record "ADLSE Setup Companies";
         ADLSESetupRec: Record "ADLSE Setup";
+        ADLSEField: Record "ADLSE Field";
         ADLSECurrentSession: Record "ADLSE Current Session";
         ADLSESetup: Codeunit "ADLSE Setup";
         ADLSECommunication: Codeunit "ADLSE Communication";
@@ -45,26 +97,27 @@ codeunit 82569 "ADLSE Execution"
             ADLSECommunication.SetupBlobStorage();
         ADLSESessionManager.Init();
 
+        if ADLSESetupCompanies.Get(CompanyName) then;
+
         ADLSEExternalEvents.OnExport(ADLSESetupRec);
 
         if EmitTelemetry then
             Log('ADLSE-022', 'Starting export for all tables', Verbosity::Normal);
-        ADLSESetupCompanies.SetRange(Enabled, true);
         AdlseTable.SetRange(Enabled, true);
-        if ADLSESetupCompanies.FindSet() then
-            repeat                
-                if AdlseTable.FindSet(false) then
-                    repeat
-                        Counter += 1;
-                        AdlseTable.SetRange("Table ID", AdlseTable."Table ID");
-                        AdlseTable.SetRange(Enabled, true);
-                        if not AdlseTable.IsEmpty() then
-                            if ADLSESessionManager.StartExport(ADLSESetupCompanies.CompanyName, AdlseTable."Table ID", EmitTelemetry) then
-                                Started += 1;
-                    until AdlseTable.Next() = 0;
-            until ADLSESetupCompanies.Next() = 0;
+        if AdlseTable.FindSet(false) then
+            repeat
+                Counter += 1;
+                ADLSEField.SetRange("Table ID", ADLSETable."Table ID");
+                ADLSEField.SetRange(Enabled, true);
+                if not ADLSEField.IsEmpty() then
+                    if ADLSESessionManager.StartExport(AdlseTable."Table ID", EmitTelemetry) then
+                        Started += 1;
+            until AdlseTable.Next() = 0;
 
-        Message(ExportStartedTxt, Started, Counter);
+        ADLSESetupCompanies."Last message" := StrSubstNo(ExportStartedTxt, Started, Counter);
+        if ADLSESetupCompanies.Modify(false) then;
+
+        if GuiAllowed then Message(ExportStartedTxt, Started, Counter);
         if EmitTelemetry then
             Log('ADLSE-001', StrSubstNo(ExportStartedTxt, Started, Counter), Verbosity::Normal);
 

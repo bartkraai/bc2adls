@@ -13,19 +13,19 @@ codeunit 82570 "ADLSE Session Manager"
         SavePendingTables('');
     end;
 
-    procedure StartExport(ExportCompany: Text[100]; TableID: Integer; EmitTelemetry: Boolean): Boolean
+    procedure StartExport(TableID: Integer; EmitTelemetry: Boolean): Boolean
     begin
         // if the last run failed, ensure that you run again, even though there may be no data differences.
-        exit(StartExport(ExportCompany,TableID, false, LastRunFailed(TableID, EmitTelemetry), EmitTelemetry));
+        exit(StartExport(TableID, false, LastRunFailed(TableID, EmitTelemetry), EmitTelemetry));
     end;
 
     local procedure StartExportFromPending(TableID: Integer; EmitTelemetry: Boolean): Boolean
     begin
-        StartExport(CompanyName(),TableID, true, false, EmitTelemetry);
+        StartExport(TableID, true, false, EmitTelemetry);
     end;
 
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Table", 'r')]
-    local procedure StartExport(ExportCompany: Text[100];TableID: Integer; ExportWasPending: Boolean; ForceExport: Boolean; EmitTelemetry: Boolean) Started: Boolean
+    local procedure StartExport(TableID: Integer; ExportWasPending: Boolean; ForceExport: Boolean; EmitTelemetry: Boolean) Started: Boolean
     var
         ADLSETable: Record "ADLSE Table";
         ADLSESetup: Record "ADLSE Setup";
@@ -40,10 +40,10 @@ codeunit 82570 "ADLSE Session Manager"
             ADLSESetup.GetSingleton();
             if ADLSESetup."Export Company Database Tables" <> '' then
                 if (not ADLSEUtil.IsTablePerCompany(TableID)) then
-                    if (ADLSESetup."Export Company Database Tables" <> ExportCompany) then
+                    if (ADLSESetup."Export Company Database Tables" <> CompanyName()) then
                         exit;
 
-            Started := Session.StartSession(NewSessionID, Codeunit::"ADLSE Execute", ExportCompany, ADLSETable);
+            Started := Session.StartSession(NewSessionID, Codeunit::"ADLSE Execute", CompanyName(), ADLSETable);
             CustomDimensions.Add('Entity', ADLSEUtil.GetTableCaption(TableID));
             CustomDimensions.Add('ExportWasPending', Format(ExportWasPending));
             if Started then begin
