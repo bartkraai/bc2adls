@@ -5,8 +5,9 @@ page 82578 "ADLSE Setup Companies"
     UsageCategory = Administration;
     SourceTable = "ADLSE Setup Companies";
     Caption = 'Companies';
-    DeleteAllowed = false;
+    DeleteAllowed = true;
     InsertAllowed = false;
+    ModifyAllowed = true;
 
     
     layout

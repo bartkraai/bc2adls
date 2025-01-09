@@ -14,7 +14,10 @@ report 82561 "ADLSE Schedule Task Assignment"
             var
                 ADLSEExecution: Codeunit "ADLSE Execution";
             begin
-                ADLSEExecution.StartExport(ADLSETable);
+                if AllCompanies then
+                    ADLSEExecution.StartExportAllCompanies(ADLSETable)
+                else
+                    ADLSEExecution.StartExport(ADLSETable);
             end;
         }
     }
@@ -28,6 +31,12 @@ report 82561 "ADLSE Schedule Task Assignment"
                 group(Options)
                 {
                     Caption = 'Options';
+                    field(AllCompaniesControl; AllCompanies)
+                    {
+                        ApplicationArea = All;
+                        Caption = 'All Companies';
+                        ToolTip = 'Specifies that the export runs for all companies.';
+                    }
                     field(JobQueueDescription; Description)
                     {
                         ApplicationArea = All;
@@ -121,6 +130,7 @@ report 82561 "ADLSE Schedule Task Assignment"
         RunOnThursdays: Boolean;
         RunOnFridays: Boolean;
         RunOnSaturdays: Boolean;
+        AllCompanies: Boolean;
 
     procedure CreateJobQueueEntry(var JobQueueEntry: Record "Job Queue Entry")
     var

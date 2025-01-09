@@ -163,7 +163,7 @@ page 82560 "ADLSE Setup"
                     CurrPage.Update();
                 end;
             }
-              action(ExportAllCompanies)
+            action(ExportAllCompanies)
             {
                 ApplicationArea = All;
                 Caption = 'Export all companies';
@@ -173,9 +173,10 @@ page 82560 "ADLSE Setup"
 
                 trigger OnAction()
                 var
+                    ADLSETable: Record "ADLSE Table";
                     ADLSEExecution: Codeunit "ADLSE Execution";
                 begin
-                    ADLSEExecution.StartExportAllCompanies();
+                    ADLSEExecution.StartExportAllCompanies(ADLSETable);
                     CurrPage.Update();
                 end;
             }

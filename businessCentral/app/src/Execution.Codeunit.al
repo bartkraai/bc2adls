@@ -27,32 +27,23 @@ codeunit 82569 "ADLSE Execution"
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Table", 'r')]
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Field", 'r')]
     [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE setup companies", 'rm')]
-    internal procedure StartExportAllCompanies()
+    internal procedure StartExportAllCompanies(AdlseTable: Record "ADLSE Table")
     var
         ADLSESetupCompanies: Record "ADLSE Setup Companies";
         ADLSESetupRec: Record "ADLSE Setup";
-        AdlseTable: Record "ADLSE Table";
-        ADLSEField: Record "ADLSE Field";
-        ADLSECurrentSession: Record "ADLSE Current Session";
         ADLSESetup: Codeunit "ADLSE Setup";
-        ADLSECommunication: Codeunit "ADLSE Communication";
-        ADLSESessionManager: Codeunit "ADLSE Session Manager";
-        ADLSEExternalEvents: Codeunit "ADLSE External Events";
+        //ADLSEExternalEvents: Codeunit "ADLSE External Events";
         Counter: Integer;
-        Started: Integer;
         NewSessionID: Integer;
     begin
         ADLSESetup.CheckSetup(ADLSESetupRec);
         EmitTelemetry := ADLSESetupRec."Emit telemetry";
-        ADLSECurrentSession.CleanupSessions();
-        if ADLSESetupRec.GetStorageType() = ADLSESetupRec."Storage Type"::"Azure Data Lake" then //Because Fabric doesn't have do create a container
-            ADLSECommunication.SetupBlobStorage();
-        ADLSESessionManager.Init();
 
-        ADLSEExternalEvents.OnExport(ADLSESetupRec);
+        //TODO ADLSEExternalEvents.OnExport(ADLSESetupRec);
 
         if EmitTelemetry then
-            Log('ADLSE-022', 'Starting export for all tables', Verbosity::Normal);
+            Log('ADLSE-022', 'Starting export for all companies', Verbosity::Normal);
+        
         ADLSESetupCompanies.SetRange(Enabled, true);
         if ADLSESetupCompanies.FindSet() then begin
             repeat
@@ -62,7 +53,7 @@ codeunit 82569 "ADLSE Execution"
 
                 ADLSESetupCompanies."Date last started" := CurrentDateTime();
                 ADLSESetupCompanies.LastSessionId := NewSessionID;
-                ADLSESetupCompanies.GetSessionInfo();
+                ADLSESetupCompanies.ExportRunning := true;
                 ADLSESetupCompanies.Modify(false);
             until ADLSESetupCompanies.Next() = 0;
 
@@ -70,7 +61,7 @@ codeunit 82569 "ADLSE Execution"
             if EmitTelemetry then
                 Log('ADLSE-001', StrSubstNo(ExportStartedAllCompaniesTxt, Counter), Verbosity::Normal);
 
-            ADLSEExternalEvents.OnAllExportIsFinished(ADLSESetupRec);
+            //TODO ADLSEExternalEvents.OnAllExportIsFinished(ADLSESetupRec);
         end;
     end;
 
@@ -97,8 +88,6 @@ codeunit 82569 "ADLSE Execution"
             ADLSECommunication.SetupBlobStorage();
         ADLSESessionManager.Init();
 
-        if ADLSESetupCompanies.Get(CompanyName) then;
-
         ADLSEExternalEvents.OnExport(ADLSESetupRec);
 
         if EmitTelemetry then
@@ -107,15 +96,14 @@ codeunit 82569 "ADLSE Execution"
         if AdlseTable.FindSet(false) then
             repeat
                 Counter += 1;
-                ADLSEField.SetRange("Table ID", ADLSETable."Table ID");
+                ADLSEField.SetRange("Table ID", AdlseTable."Table ID");
                 ADLSEField.SetRange(Enabled, true);
                 if not ADLSEField.IsEmpty() then
                     if ADLSESessionManager.StartExport(AdlseTable."Table ID", EmitTelemetry) then
                         Started += 1;
             until AdlseTable.Next() = 0;
 
-        ADLSESetupCompanies."Last message" := StrSubstNo(ExportStartedTxt, Started, Counter);
-        if ADLSESetupCompanies.Modify(false) then;
+        ADLSESetupCompanies.SetMessage(CopyStr(StrSubstNo(ExportStartedTxt, Started, Counter), 1, 43));       
 
         if GuiAllowed then Message(ExportStartedTxt, Started, Counter);
         if EmitTelemetry then
