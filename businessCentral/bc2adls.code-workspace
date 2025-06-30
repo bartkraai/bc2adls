@@ -2,13 +2,33 @@
     "folders": [
         {
             "path": ".\\app"
-        },
-        {
-            "path": ".\\test"
         }
     ],
     "settings": {
-        "al.enableCodeAnalysis": true
+        "al.packageCachePath": [
+            "C:/4ps-custom-nl/.alpackages/25.5"
+        ],
+        "al.enableCodeAnalysis": true,
+        "launch": {
+            "version": "0.2.0",
+            "configurations": [
+                {
+                    "type": "al",
+                    "request": "launch",
+                    "name": "FPS007 LatestRelease",
+                    "breakOnError": "ExcludeTry",
+                    "launchBrowser": false,
+                    "enableLongRunningSqlStatements": true,
+                    "enableSqlInformationDebugger": true,
+                    "environmentType": "Sandbox",
+                    "environmentName":"LatestRelease", 
+                    "tenant": "34b93528-e939-4e0b-a370-e6b753ae2514", 
+                    "applicationFamily": "4psconstruct",
+                    "schemaUpdateMode": "ForceSync"
+                  }       
+            ],
+            "compounds": []
+        }
     },
     "extensions": {
         "recommendations": [
