@@ -40,6 +40,10 @@ page 82575 "ADLSE Table API v12"
                 {
                     Editable = false;
                 }
+                field(totaldatabaserecords;GetTotalDatabaseRecords(Rec."Table ID"))
+                {
+                    Editable = false;
+                }
             }
             part(adlseField; "ADLSE Field API v12")
             {
@@ -49,6 +53,13 @@ page 82575 "ADLSE Table API v12"
             }
         }
     }
+    local procedure GetTotalDatabaseRecords(TableNumber: Integer): Integer
+    var
+        RecordRef: RecordRef;
+    begin
+        RecordRef.Open(TableNumber);
+        exit(RecordRef.Count());
+    end;
 
     [ServiceEnabled]
     procedure Reset(var ActionContext: WebServiceActionContext)
