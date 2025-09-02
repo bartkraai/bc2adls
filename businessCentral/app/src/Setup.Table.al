@@ -118,8 +118,10 @@ table 82560 "ADLSE Setup"
             var
                 OpenMirroringPreviewLbl: label 'Microsoft Fabric - Open Mirroring connection in bc2adls is still in preview. Please use it with caution.';
             begin
-                if Rec."Storage Type" = Rec."Storage Type"::"Open Mirroring" then
+                if Rec."Storage Type" = Rec."Storage Type"::"Open Mirroring" then begin
+                    Rec."Delete Table" := true;
                     Message(OpenMirroringPreviewLbl);
+                end;
             end;
         }
 
@@ -220,6 +222,24 @@ table 82560 "ADLSE Setup"
             ToolTip = 'Specifies the delayed export time in seconds (0 = No delay).';
             InitValue = 0;
         }
+        field(75; "Use Field Captions"; Boolean)
+        {
+            Caption = 'Use Field Captions';
+            ToolTip = 'Specifies if the captions of fields will be used instead of names.';
+            InitValue = false;
+        }
+        field(80; "Use IDs for Duplicates Only"; Boolean)
+        {
+            Caption = 'IDs for Duplicates Only';
+            ToolTip = 'Specifies that table and field IDs will only be used in names if duplicates exist.';
+            InitValue = false;
+        }
+        field(95; "Use Table Captions"; Boolean)
+        {
+            Caption = 'Use Table Captions';
+            ToolTip = 'Specifies if the captions of Tables will be used instead of names.';
+            InitValue = false;
+        }
     }
 
     keys
@@ -286,10 +306,20 @@ table 82560 "ADLSE Setup"
     end;
 
     procedure SchemaExported()
+    var
+        FixitErrorInfo: ErrorInfo;
+        ClearSchemaExportDateLbl: Label 'Clear schema export date';
     begin
         Rec.GetSingleton();
-        if Rec."Schema Exported On" <> 0DT then
-            Error(ErrorInfo.Create(SchemaAlreadyExportedErr, true));
+        if Rec."Schema Exported On" <> 0DT then begin
+            FixitErrorInfo := ErrorInfo.Create(SchemaAlreadyExportedErr, true);
+            FixitErrorInfo.AddAction(
+                ClearSchemaExportDateLbl,
+                Codeunit::"ADLSE Execution",
+                'ClearSchemaExportedOn'
+            );
+            Error(FixitErrorInfo);
+        end;
     end;
 
     procedure CheckSchemaExported()

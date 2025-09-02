@@ -18,6 +18,7 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
 
     procedure CreateEntityContent(TableID: Integer; FieldIdList: List of [Integer]) Content: JsonObject
     var
+        ADLSESetup: Record "ADLSE Setup";
         ADLSEUtil: Codeunit "ADLSE Util";
         Definition: JsonObject;
         Definitions: JsonArray;
@@ -25,6 +26,7 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
         Imports: JsonArray;
         EntityName: Text;
     begin
+        ADLSESetup.GetSingleton();
         Content.Add('jsonSchemaSemanticVersion', '1.0.0');
         Import.Add('corpusPath', 'cdm:/foundations.cdm.json');
         Imports.Add(Import);
@@ -32,7 +34,10 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
         EntityName := ADLSEUtil.GetDataLakeCompliantTableName(TableID);
         Definition.Add('entityName', EntityName);
         Definition.Add('exhibitsTraits', BlankArray);
-        Definition.Add('displayName', ADLSEUtil.GetTableName(TableID));
+        if ADLSESetup."Use Table Captions" then
+            Definition.Add('displayName', ADLSEUtil.GetTableCaption(TableID))
+        else
+            Definition.Add('displayName', ADLSEUtil.GetTableName(TableID));
         Definition.Add('description', StrSubstNo(RepresentsTableTxt, ADLSEUtil.GetTableName(TableID)));
         Definition.Add('hasAttributes', CreateAttributes(TableID, FieldIdList));
         Definitions.Add(Definition);
@@ -41,9 +46,11 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
 
     procedure CreateEntityContent(TableID: Integer) Content: JsonObject
     var
+        ADLSESetup: Record "ADLSE Setup";
         ADLSEUtil: Codeunit "ADLSE Util";
         ADLSEExecute: Codeunit "ADLSE Execute";
         RecordRef: RecordRef;
+        SystemIdFieldRef: FieldRef;
         FieldRef: FieldRef;
         FieldIdList: List of [Integer];
         FieldId: Integer;
@@ -56,19 +63,23 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
         RecordRef.Open(TableID);
         FieldIdList := ADLSEExecute.CreateFieldListForTable(TableID);
 
-        FieldRef := RecordRef.Field(2000000000);
-        if ADLSEUtil.IsTablePerCompany(TableID) then begin
-            Imports.Add(ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef.Name, FieldRef.Number));
+        SystemIdFieldRef := RecordRef.Field(2000000000);
+        Imports.Add(ADLSEUtil.GetDataLakeCompliantFieldName(SystemIdFieldRef));
+        if ADLSEUtil.IsTablePerCompany(TableID) then
             Imports.Add(this.GetCompanyFieldName());
-        end else
-            Imports.Add(ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef.Name, FieldRef.Number));
         Content.Add('keyColumns', Imports);
 
+        ADLSESetup.GetSingleton();
         foreach FieldId in FieldIdList do begin
             FieldRef := RecordRef.Field(FieldId);
             Clear(Column);
-            Column.Add('Name', ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef.Name, FieldRef.Number));
-            Column.Add('DataType', GetFabricDataFormat(FieldRef.Type));
+            Column.Add('Name', ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef));
+            if ADLSESetup."Storage Type" = ADLSESetup."Storage Type"::"Open Mirroring" then begin
+                Column.Add('DataType', GetOpenMirrorDataFormat(FieldRef.Type));
+                if (FieldRef.Number <> RecordRef.SystemIdNo()) then
+                    Column.Add('IsNullable', true);
+            end else
+                Column.Add('DataType', GetFabricDataFormat(FieldRef.Type));
             Columns.Add(Column);
         end;
 
@@ -171,7 +182,7 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
                 FieldLength := 15; // 15 is the default max number of digits. FieldRef.Length is giving the wrong number back for decimal
             Result.Add(
                 CreateAttributeJson(
-                    ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef.Name, FieldRef.Number),
+                    ADLSEUtil.GetDataLakeCompliantFieldName(FieldRef),
                     DataFormat,
                     FieldRef.Name,
                     AppliedTraits,
@@ -415,8 +426,54 @@ codeunit 82566 "ADLSE CDM Util" // Refer Common Data Model https://docs.microsof
                 exit(GetCDMDataFormat_String());
             FieldType::Text:
                 exit(GetCDMDataFormat_String());
+            else
+                exit(GetCDMDataFormat_String()); // default case
         end;
     end;
+
+
+    local procedure GetOpenMirrorDataFormat(FieldType: FieldType): Text
+    var
+        ADLSESetup: Record "ADLSE Setup";
+    begin
+        case FieldType of
+            FieldType::BigInteger:
+                exit('Int64');
+            FieldType::Date:
+                exit('IDate');
+            FieldType::DateFormula:
+                exit(GetCDMDataFormat_String());
+            FieldType::DateTime:
+                exit('DateTime');
+            FieldType::Decimal:
+                exit('Double');
+            FieldType::Duration:
+                exit('Int32');
+            FieldType::Integer:
+                exit('Int32');
+            FieldType::Option:
+                begin
+                    ADLSESetup.GetSingleton();
+                    if ADLSESetup."Export Enum as Integer" then
+                        exit('Int16')
+                    else
+                        exit(GetCDMDataFormat_String());
+                end;
+            FieldType::Time:
+                exit('ITime');
+            FieldType::Boolean:
+                exit('Boolean');
+            FieldType::Code:
+                exit(GetCDMDataFormat_String());
+            FieldType::Guid:
+                exit(GetCDMDataFormat_String());
+            FieldType::Text:
+                exit(GetCDMDataFormat_String());
+            else
+                exit(GetCDMDataFormat_String()); // default case
+        end;
+    end;
+
 
     local procedure CompareAttributeField(Attribute1: JsonToken; Attribute2: JsonToken; FieldName: Text; Index: Integer)
     var
