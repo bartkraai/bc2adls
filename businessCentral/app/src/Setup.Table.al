@@ -14,7 +14,7 @@ table 82560 "ADLSE Setup"
     {
         field(1; "Primary Key"; Integer)
         {
-            AllowInCustomizations = AsReadOnly;
+            //AllowInCustomizations = AsReadOnly;
             Caption = 'Primary Key';
             Editable = false;
         }
@@ -158,7 +158,7 @@ table 82560 "ADLSE Setup"
         }
         field(35; "Schema Exported On"; DateTime)
         {
-            AllowInCustomizations = AsReadOnly;
+            //AllowInCustomizations = AsReadOnly;
             Caption = 'Schema exported on';
         }
         field(40; "Translations"; Text[250])
@@ -183,7 +183,7 @@ table 82560 "ADLSE Setup"
         }
         field(55; "Maximum Retries"; Integer)
         {
-            AllowInCustomizations = AsReadOnly;
+            //AllowInCustomizations = AsReadOnly;
             Caption = 'Maximum retries';
             InitValue = 0;
 
