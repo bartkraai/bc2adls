@@ -6,6 +6,7 @@ codeunit 85567 "ADLSE Gen 2 Util Mock"
         _blobExists: Boolean;
         _contents: Dictionary of [Text, Text];
         _body: Text;
+        _leaseId: Text;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ADLSE Gen 2 Util", OnBeforeGetBlobContent, '', false, false)]
     local procedure OnBeforeGetBlobContentOnGen2Util(BlobPath: Text; ADLSECredentials: Codeunit "ADLSE Credentials"; var BlobExists: Boolean; var Content: JsonObject; var IsHandled: Boolean)
@@ -21,26 +22,26 @@ codeunit 85567 "ADLSE Gen 2 Util Mock"
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ADLSE Gen 2 Util", OnBeforeCreateBlockBlob, '', false, false)]
-    local procedure OnBeforeCreateBlockBlobOnGen2Util(var IsHandled: Boolean)
+    local procedure OnBeforeCreateBlockBlobOnGen2Util(BlobPath: Text; LeaseID: Text; Body: Text; IsJson: Boolean; var IsHandled: Boolean)
     begin
         IsHandled := true;
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ADLSE Gen 2 Util", OnBeforeGetBlobContentLength, '', false, false)]
-    local procedure OnBeforeGetBlobContentLengthOnGen2Util(var IsHandled: Boolean)
+    local procedure OnBeforeGetBlobContentLengthOnGen2Util(BlobPath: Text; var ContentLength: Integer; var IsHandled: Boolean)
     begin
         IsHandled := true;
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ADLSE Gen 2 Util", OnBeforeAddBlockToDataBlob, '', false, false)]
-    local procedure OnBeforeAddBlockToDataBlobOnGen2Util(Body: Text; var IsHandled: Boolean)
+    local procedure OnBeforeAddBlockToDataBlobOnGen2Util(BlobPath: Text; Body: Text; BlockIDorPosition: Text; var IsHandled: Boolean)
     begin
         _body := Body;
         IsHandled := true;
     end;
 
     [EventSubscriber(ObjectType::Codeunit, Codeunit::"ADLSE Gen 2 Util", OnBeforeCommitAllBlocksOnDataBlob, '', false, false)]
-    local procedure OnBeforeCommitAllBlocksOnDataBlobOnGen2Util(var IsHandled: Boolean)
+    local procedure OnBeforeCommitAllBlocksOnDataBlobOnGen2Util(BlobPath: Text; BlockIDList: List of [Text]; var IsHandled: Boolean)
     begin
         IsHandled := true;
     end;
@@ -63,5 +64,15 @@ codeunit 85567 "ADLSE Gen 2 Util Mock"
     procedure GetBody(): Text
     begin
         exit(_body);
+    end;
+
+    procedure SetLeaseId(LeaseId: Text)
+    begin
+        _leaseId := LeaseId;
+    end;
+
+    procedure GetLeaseId(): Text
+    begin
+        exit(_leaseId);
     end;
 }

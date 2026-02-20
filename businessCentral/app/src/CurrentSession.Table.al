@@ -1,5 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
+namespace bc2adls;
+using System.Environment;
 #pragma warning disable LC0015
 table 82565 "ADLSE Current Session"
 #pragma warning restore
@@ -45,6 +47,16 @@ table 82565 "ADLSE Current Session"
         }
     }
 
+    fieldgroups
+    {
+        fieldgroup(DropDown; "Table ID", "Company Name")
+        {
+        }
+        fieldgroup(Brick; "Table ID", "Company Name", "Session ID")
+        {
+        }
+    }
+
     var
         SessionTerminatedMsg: Label 'Export to data lake session for table %1 terminated by user.', Comment = '%1 is the table name corresponding to the session';
         ExportDataInProgressErr: Label 'An export data process is already running. Please wait for it to finish.';
@@ -78,6 +90,16 @@ table 82565 "ADLSE Current Session"
             ADLSEExecution.Log('ADLSE-036', StrSubstNo(CouldNotStopSessionErr, Rec."Session ID", CompanyName()), Verbosity::Error, CustomDimensions)
         else
             ADLSEExecution.Log('ADLSE-039', 'Session ended and was removed', Verbosity::Normal, CustomDimensions);
+    end;
+
+    [InherentPermissions(PermissionObjectType::TableData, Database::"ADLSE Current Session", 'rd')]
+    procedure StopAndCheckIfLast(ADLSETableID: Integer; EmitTelemetry: Boolean; TableCaption: Text): Boolean
+    begin
+        Rec.ReadIsolation(IsolationLevel::UpdLock);
+        Stop(ADLSETableID, EmitTelemetry, TableCaption);
+        Rec.Reset();
+        Rec.SetRange("Company Name", CopyStr(CompanyName(), 1, 30));
+        exit(Rec.IsEmpty());
     end;
 
     procedure CheckForNoActiveSessions()
@@ -134,7 +156,7 @@ table 82565 "ADLSE Current Session"
         ActiveSession: Record "Active Session";
     begin
         ActiveSession.SetLoadFields("Session Unique ID");
-        ActiveSession.Get(ServiceInstanceId(), SessId);
+        if ActiveSession.Get(ServiceInstanceId(), SessId) then;
         exit(ActiveSession."Session Unique ID");
     end;
 }

@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
+namespace bc2adls;
 codeunit 82561 "ADLSE Execute"
 {
     Access = Internal;
@@ -10,13 +11,11 @@ codeunit 82561 "ADLSE Execute"
     var
         ADLSESetup: Record "ADLSE Setup";
         ADLSERun: Record "ADLSE Run";
-        ADLSETable: Record "ADLSE Table";
         ADLSECurrentSession: Record "ADLSE Current Session";
         ADLSETableLastTimestamp: Record "ADLSE Table Last Timestamp";
         ADLSECommunication: Codeunit "ADLSE Communication";
         ADLSEExecution: Codeunit "ADLSE Execution";
         ADLSEUtil: Codeunit "ADLSE Util";
-        ADLSEExternalEvents: Codeunit "ADLSE External Events";
         CustomDimensions: Dictionary of [Text, Text];
         TableCaption: Text;
         UpdatedLastTimestamp: BigInteger;
@@ -225,14 +224,14 @@ codeunit 82561 "ADLSE Execute"
                     NoMoreToCollect := RecordRef.Next() = 0;
             until (not CollectedAndSent or NoMoreToCollect);
 
-            if ErrorMessage.Message <> '' then
+            if ErrorMessage.Message() <> '' then
                 Error(ErrorMessage);
             if ADLSECommunication.TryFinish(FlushedTimeStamp) then begin
                 if UpdatedLastTimeStamp < FlushedTimeStamp then // sample the highest timestamp, to cater to the eventuality that the records do not appear sorted per timestamp
                     UpdatedLastTimeStamp := FlushedTimeStamp
             end else
                 ErrorMessage.Message := StrSubstNo('%1%2', GetLastErrorText(), GetLastErrorCallStack());
-            if ErrorMessage.Message <> '' then
+            if ErrorMessage.Message() <> '' then
                 Error(ErrorMessage);
         end;
         if EmitTelemetry then
@@ -360,14 +359,18 @@ codeunit 82561 "ADLSE Execute"
         ADLSEExecution: Codeunit "ADLSE Execution";
         ADLSEExternalEvents: Codeunit "ADLSE External Events";
         CustomDimensions: Dictionary of [Text, Text];
+        IsLastSession: Boolean;
     begin
         ADLSERun.RegisterEnded(ADLSETable."Table ID", EmitTelemetry, TableCaption);
-        ADLSECurrentSession.Stop(ADLSETable."Table ID", EmitTelemetry, TableCaption);
+        // Atomically delete this session's record and check if any remain.
+        // LockTable serializes concurrent callers so only the truly last
+        // session will see an empty table and fire the notification.
+        IsLastSession := ADLSECurrentSession.StopAndCheckIfLast(ADLSETable."Table ID", EmitTelemetry, TableCaption);
         if EmitTelemetry then begin
             CustomDimensions.Add('Entity', TableCaption);
             ADLSEExecution.Log('ADLSE-037', 'Finished the export process', Verbosity::Normal, CustomDimensions);
         end;
-        Commit(); //To avoid misreading
+        Commit(); // persists changes and releases the table lock
 
         // This export session is soon going to end. Start up a new one from 
         // the stored list of pending tables to export.
@@ -381,9 +384,7 @@ codeunit 82561 "ADLSE Execute"
         // batch. 
         ADLSESessionManager.StartExportFromPendingTables();
 
-
-
-        if not ADLSECurrentSession.AreAnySessionsActive() then begin
+        if IsLastSession then begin
             ADLSESetupRec.GetSingleton();
             ADLSEExternalEvents.OnExportFinished(ADLSESetupRec, ADLSETable);
 
