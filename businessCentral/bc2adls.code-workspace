@@ -1,40 +1,57 @@
 {
-    "folders": [
-        {
-            "path": ".\\app"
-        }
-    ],
-    "settings": {
-        "al.packageCachePath": [
-            "C:/4ps-custom-nl/.alpackages/25.5"
-        ],
-        "al.enableCodeAnalysis": true,
-        "launch": {
-            "version": "0.2.0",
-            "configurations": [
-                {
-                    "type": "al",
-                    "request": "launch",
-                    "name": "FPS007 LatestRelease",
-                    "breakOnError": "ExcludeTry",
-                    "launchBrowser": false,
-                    "enableLongRunningSqlStatements": true,
-                    "enableSqlInformationDebugger": true,
-                    "environmentType": "Sandbox",
-                    "environmentName":"LatestRelease", 
-                    "tenant": "34b93528-e939-4e0b-a370-e6b753ae2514", 
-                    "applicationFamily": "4psconstruct",
-                    "schemaUpdateMode": "ForceSync"
-                  }       
-            ],
-            "compounds": []
-        }
+  "folders": [
+    {
+      "path": ".\\app"
     },
-    "extensions": {
-        "recommendations": [
-            "ms-dynamics-smb.al",
-            "waldo.crs-al-language-extension",
-            "StefanMaron.businesscentral-lintercop"
-        ]
+    {
+      "path": "../fabric"
     }
+  ],
+  "settings": {
+    "al.packageCachePath": [
+      "../../../../4ps-custom-nl/.alpackages/26.2"
+    ],
+    "al.enableCodeAnalysis": true,
+    "launch": {
+      "version": "0.2.0",
+      "configurations": [
+        {
+          "type": "al",
+          "request": "launch",
+          "name": "FPS007 LatestRelease",
+          "breakOnError": "ExcludeTry",
+          "launchBrowser": false,
+          "enableLongRunningSqlStatements": true,
+          "enableSqlInformationDebugger": true,
+          "environmentType": "Sandbox",
+          "environmentName": "LatestRelease",
+          "tenant": "34b93528-e939-4e0b-a370-e6b753ae2514",
+          "applicationFamily": "4psconstruct",
+          "schemaUpdateMode": "ForceSync"
+        },
+         {
+          "type": "al",
+          "request": "launch",
+          "name": "Hollander Acceptatie",
+          "breakOnError": "ExcludeTry",
+          "launchBrowser": false,
+          "enableLongRunningSqlStatements": true,
+          "enableSqlInformationDebugger": true,
+          "environmentType": "Sandbox",
+          "environmentName": "Acceptatie",
+          "tenant": "d220bacf-0ccd-4c5c-a757-c2d3e36c8747",
+          "applicationFamily": "4psconstruct",
+          "schemaUpdateMode": "ForceSync"
+        }
+      ],
+      "compounds": []
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-dynamics-smb.al",
+      "waldo.crs-al-language-extension",
+      "StefanMaron.businesscentral-lintercop"
+    ]
+  }
 }
